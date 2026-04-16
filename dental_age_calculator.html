@@ -1,0 +1,498 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Dental Age Calculator — Demirjian & Duangto</title>
+<style>
+*{box-sizing:border-box}
+body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Arial,sans-serif;max-width:1100px;margin:0 auto;padding:20px;background:#f7f7f5;color:#2c2c2a;line-height:1.5}
+h1{font-size:22px;font-weight:500;margin:0 0 4px}
+.subtitle{font-size:13px;color:#5f5e5a;margin-bottom:20px}
+.card{background:white;border:1px solid #e0ded5;border-radius:12px;padding:16px;margin-bottom:16px}
+.row{display:flex;gap:12px;flex-wrap:wrap;align-items:end}
+.field{display:flex;flex-direction:column;gap:4px}
+.field label{font-size:12px;color:#5f5e5a}
+input,select,button{font-family:inherit;font-size:14px;padding:8px 10px;border:1px solid #d3d1c7;border-radius:6px;background:white}
+button{cursor:pointer;background:#f1efe8}
+button:hover{background:#e8e6dd}
+button.primary{background:#378add;color:white;border-color:#378add}
+button.primary:hover{background:#185fa5}
+.ca-display{font-size:16px;font-weight:500;min-height:36px;display:flex;flex-direction:column;justify-content:center;padding:0 8px;line-height:1.3}
+.ca-error{color:#a32d2d}
+.grid{display:grid;grid-template-columns:90px repeat(8,1fr) 70px;gap:4px;font-size:12px}
+.grid-header{padding:6px 4px;font-weight:500;color:#5f5e5a;text-align:center}
+.tooth-label{padding:8px 4px;font-weight:500;text-align:center;font-size:11px;display:flex;align-items:center;justify-content:center}
+.cell{padding:8px 4px;text-align:center;cursor:pointer;border-radius:6px;border:1px solid #e0ded5;background:white}
+.cell:hover:not(.disabled){background:#f1efe8}
+.cell.selected{background:#e6f1fb;color:#0c447c;font-weight:500;border-color:#378add}
+.cell.disabled{color:#b4b2a9;background:transparent;cursor:default;border-color:transparent}
+.score-cell{padding:8px 4px;text-align:center;font-weight:500}
+.results{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:12px}
+.result-card{background:#f7f6f1;border-radius:8px;padding:12px 14px}
+.result-label{font-size:12px;color:#5f5e5a}
+.result-value{font-size:22px;font-weight:500;margin:2px 0}
+.result-note{font-size:11px;color:#5f5e5a}
+.footer-note{font-size:11px;color:#5f5e5a;line-height:1.6;margin-top:8px}
+.diagram-panel{position:fixed;top:20px;right:20px;width:440px;background:white;border:1px solid #d3d1c7;border-radius:12px;padding:14px;box-shadow:0 4px 16px rgba(0,0,0,0.08);z-index:100;max-height:calc(100vh - 40px);overflow-y:auto}
+.diagram-panel.hidden{display:none}
+.diagram-title{font-size:13px;font-weight:500;margin-bottom:8px}
+.diagram-desc{font-size:11px;color:#5f5e5a;line-height:1.5;margin-top:8px}
+.diagram-close{position:absolute;top:8px;right:8px;background:none;border:none;font-size:18px;cursor:pointer;color:#888780;padding:0 6px}
+.chart-wrap{position:relative;width:100%}
+.chart-wrap img{width:100%;display:block}
+.chart-hi{position:absolute;border:3px solid #d85a30;border-radius:4px;box-shadow:0 0 0 2px rgba(255,255,255,0.8);pointer-events:none;transition:all 0.15s ease-out}
+.hint{font-size:11px;color:#888780;font-style:italic;margin:6px 0 10px}
+.date-display{font-size:12px;color:#5f5e5a;margin-top:2px;font-style:italic}
+@media (max-width:1000px){.diagram-panel{position:static;width:100%;margin-bottom:16px;box-shadow:none}}
+@media print{body{background:white}.diagram-panel{display:none}button{display:none}}
+</style>
+</head>
+<body>
+
+<h1>Dental Age Calculator</h1>
+<div class="subtitle">Demirjian (1973) and Duangto (2016) methods — for teaching and research use</div>
+<div style="font-size:12px;color:#5f5e5a;margin:-12px 0 20px;font-style:italic">Developed by Chanika Manmontri with the assistance of Claude (Anthropic). For education and research purposes only.</div>
+
+<div class="card">
+<div class="row">
+<div class="field"><label>Case ID (optional)</label><input type="text" id="caseId" placeholder="e.g. P001" style="width:120px"></div>
+<div class="field"><label>Sex</label><select id="sex"><option value="M">Male</option><option value="F">Female</option></select></div>
+<div class="field"><label>Date of birth</label><input type="date" id="dob" style="width:150px"><div class="date-display" id="dobDisplay">DD/MM/YYYY</div></div>
+<div class="field"><label>Date of X-ray</label><input type="date" id="dox" style="width:150px"><div class="date-display" id="doxDisplay">DD/MM/YYYY</div></div>
+<div class="field" style="flex:1;min-width:160px"><label>Chronological age</label><div class="ca-display" id="ca">—</div></div>
+<button id="reset">Reset</button>
+</div>
+</div>
+
+<div class="card">
+<div class="hint">Click a stage cell to select it. Hover over a stage cell to see the matching diagram on the reference chart, or hover over a column header to see the stage criteria. Blank cells = stage not defined for that tooth.</div>
+<div style="font-size:11px;color:#5f5e5a;background:#f7f6f1;border-radius:6px;padding:8px 12px;margin-bottom:10px;line-height:1.5">
+<strong>How to use.</strong> Stage each of the seven mandibular teeth by clicking the cell that matches what you see on the panoramic radiograph. The calculator will automatically compute four dental age estimates: the classical Demirjian 1973 (7 teeth), the Thai Duangto 2016 (7 teeth), and the two Thai Duangto 2018 four-teeth methods. Methods that need teeth you have not yet staged will show a hint. Scores are sex-specific because girls reach the same dental developmental state at younger chronological ages than boys.
+</div>
+<div class="grid" id="grid"></div>
+</div>
+
+<div class="card">
+<div class="results">
+<div class="result-card"><div class="result-label">Maturity score (7 teeth)</div><div class="result-value" id="sum7">—</div><div class="result-note" id="sum7Note">Demirjian 1973</div></div>
+<div class="result-card"><div class="result-label">Demirjian 1973 (7 teeth)</div><div class="result-value" id="r_dem">—</div><div class="result-note" id="r_demDiff">awaiting staging</div></div>
+<div class="result-card"><div class="result-label">Duangto 2016 (7 teeth)</div><div class="result-value" id="r_du7">—</div><div class="result-note" id="r_du7Diff">awaiting staging</div></div>
+<div class="result-card"><div class="result-label">Duangto 2018 — 4 teeth I (37,36,35,34)</div><div class="result-value" id="r_du4I">—</div><div class="result-note" id="r_du4IDiff">awaiting staging</div></div>
+<div class="result-card"><div class="result-label">Duangto 2018 — 4 teeth II (37,35,34,31)</div><div class="result-value" id="r_du4II">—</div><div class="result-note" id="r_du4IIDiff">awaiting staging</div></div>
+</div>
+<div style="margin-top:12px;display:flex;gap:8px;flex-wrap:wrap">
+<button class="primary" id="copyBtn">Copy result (with column headers)</button>
+<button id="printBtn">Print</button>
+</div>
+<div class="footer-note">
+<p style="margin:0 0 8px"><strong>About this tool.</strong> Developed by Chanika Manmontri with the assistance of Claude (Anthropic), 2026. For education and research purposes only; not for clinical or forensic decision-making without verification against original source materials. Chronological age = (date of X-ray − date of birth) / 365.25.</p>
+
+<p style="margin:0 0 8px"><strong>Valid age ranges.</strong> Demirjian 1973: 3.0–16.0 yr · Duangto 2016 (7 teeth): 6–15 yr · Duangto 2018 (4 teeth I and II): 7–15 yr. Results outside these ranges are flagged.</p>
+
+<p style="margin:0 0 8px"><strong>95% predictive intervals</strong> are computed as ±1.96 × SEP, where SEPs are taken from the original papers. Duangto 2016 reports 0.83 yr (M) / 0.90 yr (F) for the seven-teeth Thai equation and 0.87 yr (M) / 0.73 yr (F) for the classical Demirjian method when applied to the Thai validation sample. Duangto 2018 reports 0.818 / 0.766 yr for Method I and 0.843 / 0.790 yr for Method II.</p>
+
+<p style="margin:0 0 4px"><strong>Sources.</strong></p>
+<ul style="margin:0;padding-left:18px">
+<li>Demirjian A, Goldstein H, Tanner JM. A new system of dental age assessment. <em>Hum Biol</em> 1973;45:211–227. <span style="color:#888780">(7-teeth scoring table and dental age conversion table)</span></li>
+<li>Demirjian A, Goldstein H. New systems for dental maturity based on seven and four teeth. <em>Ann Hum Biol</em> 1976;3:411–421. <span style="color:#888780">(4-teeth Method I and Method II scoring tables)</span></li>
+<li>Duangto P, Janhom A, Prasitwattanaseree S, Mahakkanukrauh P, Iamaroon A. New prediction models for dental age estimation in Thai children and adolescents. <em>Forensic Sci Int</em> 2016;266:583.e1–e5. <span style="color:#888780">(Thai 7-teeth regression equation)</span></li>
+<li>Duangto P, Janhom A, Prasitwattanaseree S, Iamaroon A. New equations for age estimation using four permanent mandibular teeth in Thai children and adolescents. <em>Int J Legal Med</em> 2018;132:1743–1747. <span style="color:#888780">(Thai 4-teeth regression equations)</span></li>
+<li>Azarbakhsh G, Iranparvar P, Tehranchi A, Moshfeghi M. Relationship of vitamin D deficiency with cervical vertebral maturation and dental age in adolescents: a cross-sectional study. <em>Int J Dent</em> 2022;2022:7762873. <span style="color:#888780">(stage reference chart, adapted under CC BY 4.0)</span></li>
+</ul>
+</div>
+</div>
+
+<div class="diagram-panel hidden" id="diagramPanel">
+<button class="diagram-close" id="diagramClose">×</button>
+<div class="diagram-title" id="diagramTitle">Stage</div>
+<div class="chart-wrap">
+<img src="demirjian_stages.png" alt="Demirjian developmental stages reference chart" id="chartImg">
+<div class="chart-hi" id="chartHi"></div>
+</div>
+<div class="diagram-desc" id="diagramDesc"></div>
+</div>
+
+<script>
+const S = {
+"37":{A:2.1,B:3.5,C:5.9,D:10.1,E:12.5,F:13.2,G:13.6,H:15.4, Af:2.7,Bf:3.9,Cf:6.9,Df:11.1,Ef:13.5,Ff:14.2,Gf:14.5,Hf:15.6},
+"36":{D:8.0,E:9.6,F:12.3,G:17.0,H:19.3, Df:4.5,Ef:6.2,Ff:9.0,Gf:14.0,Hf:16.2},
+"35":{A:1.7,B:3.1,C:5.4,D:9.7,E:12.0,F:12.8,G:13.2,H:14.4, Af:1.8,Bf:3.4,Cf:6.5,Df:10.6,Ef:12.7,Ff:13.5,Gf:13.8,Hf:14.6},
+"34":{B:0.0,C:3.4,D:7.0,E:11.0,F:12.3,G:12.7,H:13.5, Bf:0.0,Cf:3.7,Df:7.5,Ef:11.8,Ff:13.1,Gf:13.4,Hf:14.1},
+"33":{C:0.0,D:3.5,E:7.9,F:10.0,G:11.0,H:11.9, Cf:0.0,Df:3.8,Ef:7.3,Ff:10.3,Gf:11.6,Hf:12.4},
+"32":{C:0.0,D:3.2,E:5.2,F:7.8,G:11.7,H:13.7, Cf:0.0,Df:3.2,Ef:5.6,Ff:8.0,Gf:12.2,Hf:14.2},
+"31":{D:0.0,E:1.9,F:4.1,G:8.2,H:11.8, Df:0.0,Ef:2.4,Ff:5.1,Gf:9.3,Hf:12.9}
+};
+// Demirjian & Goldstein 1976 Table 3: 4-teeth Method I (37, 36, 35, 34)
+const S4I = {
+"37":{A:3.2,B:6.2,C:9.9,D:14.4,E:18.4,F:20.7,G:21.9,H:23.3, Af:3.6,Bf:6.1,Cf:9.9,Df:15.3,Ef:19.2,Ff:21.7,Gf:23.0,Hf:24.2},
+"36":{D:8.0,E:12.6,F:16.9,G:21.8,H:27.4, Df:5.4,Ef:9.8,Ff:14.3,Gf:20.1,Hf:25.9},
+"35":{A:3.1,B:5.6,C:9.5,D:13.7,E:17.4,F:20.1,G:21.4,H:22.5, Af:3.7,Bf:5.8,Cf:9.8,Df:14.7,Ef:18.1,Ff:20.8,Gf:22.3,Hf:23.3},
+"34":{B:5.9,C:10.7,D:15.7,E:20.7,F:23.8,G:25.4,H:26.8, Bf:4.6,Cf:9.2,Df:15.1,Ef:20.2,Ff:23.3,Gf:25.1,Hf:26.6}
+};
+// Demirjian & Goldstein 1976 Table 4: 4-teeth Method II (37, 35, 34, 31)
+const S4II = {
+"37":{A:3.3,B:6.1,C:9.9,D:15.0,E:19.7,F:21.3,G:22.1,H:23.5, Af:3.4,Bf:6.3,Cf:10.2,Df:15.7,Ef:20.0,Ff:21.5,Gf:22.3,Hf:23.5},
+"35":{A:3.2,B:5.6,C:9.6,D:14.2,E:18.8,F:20.9,G:21.7,H:22.8, Af:3.7,Bf:6.2,Cf:10.3,Df:15.1,Ef:19.1,Ff:21.0,Gf:21.7,Hf:22.8},
+"34":{B:7.1,C:11.6,D:16.9,E:22.8,F:25.8,G:26.8,H:27.9, Bf:5.9,Cf:10.2,Df:16.2,Ef:21.9,Ff:24.6,Gf:25.6,Hf:26.8},
+"31":{C:0.0,D:7.4,E:11.5,F:14.6,G:18.9,H:25.7, Cf:0.0,Df:8.1,Ef:12.2,Ff:15.6,Gf:20.7,Hf:27.0}
+};
+// Method definitions: which scoring table, which teeth to require
+const METHODS = {
+  '7': { label: '7 teeth (Demirjian 1973 / Duangto 2016)', table: S, teeth: ["37","36","35","34","33","32","31"], range: [6, 15] },
+  '4I': { label: '4 teeth Method I (37, 36, 35, 34)', table: S4I, teeth: ["37","36","35","34"], range: [7, 15] },
+  '4II': { label: '4 teeth Method II (37, 35, 34, 31)', table: S4II, teeth: ["37","35","34","31"], range: [7, 15] }
+};
+const NAMES = {"37":"37 (M2)","36":"36 (M1)","35":"35 (PM2)","34":"34 (PM1)","33":"33 (C)","32":"32 (I2)","31":"31 (I1)"};
+const TEETH = ["37","36","35","34","33","32","31"];
+const STAGES = ["A","B","C","D","E","F","G","H"];
+const TYPE = {"37":"molar","36":"molar","35":"premolar","34":"premolar","33":"canine","32":"incisor","31":"incisor"};
+
+const DESC = {
+A: "Beginning of calcification at the superior level of the crypt as inverted cones. No fusion of calcified points.",
+B: "Fusion of calcified points forms cusps, uniting to give a regularly outlined occlusal surface.",
+C: "Enamel formation complete at occlusal surface. Beginning of dentinal deposit. Pulp chamber has curved shape at occlusal border.",
+D: "Crown formation complete to cementoenamel junction. Pulp chamber has trapezoidal form in molars. Beginning of root formation as a spicule.",
+E: "Pulp chamber walls form straight lines. Root length less than crown height. In molars: initial radicular bifurcation as a calcified point or semi-lunar shape.",
+F: "Pulp chamber walls form an isosceles triangle with funnel-shaped apex. Root length equal to or greater than crown height.",
+G: "Walls of the root canal are parallel. Apical end still partially open (distal root in molars).",
+H: "Apical end of root canal completely closed (distal root in molars). Periodontal membrane has uniform width around root and apex."
+};
+
+// Stage reference chart cell coordinates (% of image).
+// Landscape layout: 8 stage columns (A-H) × 4 tooth-type rows (molar, premolar, canine, incisor).
+// Box positions are computed so each box is centered on its target cell.
+// STAGE_X[s] is the LEFT edge; STAGE_W is the box width.
+// Letter centers measured from image: A=20, B=31, C=41, D=51, E=62, F=72, G=82, H=92 (%)
+// Label centers measured: molar=20, premolar=42, canine=63, incisor=83 (%)
+const STAGE_X = { A: 15, B: 26, C: 36, D: 46, E: 57, F: 67, G: 77, H: 87 };
+const STAGE_W = 10;
+const TYPE_Y = { molar: 11, premolar: 33, canine: 54, incisor: 74 };
+const TYPE_H = 18;
+const MISSING = { canine: ['A','B'], incisor: ['A','B'] };
+
+const BOYS = [12.4,12.9,13.5,14.0,14.5,15.0,15.6,16.2,17.0,17.6,18.2,18.9,19.7,20.4,21.0,21.7,22.4,23.1,23.8,24.6,25.4,26.2,27.0,27.8,28.6,29.5,30.3,31.1,31.8,32.6,33.6,34.7,35.8,36.9,38.0,39.2,40.6,42.0,43.6,45.1,46.7,48.3,50.0,52.0,54.3,56.8,59.6,62.5,66.0,69.0,71.6,73.5,75.1,76.4,77.7,79.0,80.2,81.2,82.0,82.8,83.6,84.3,85.0,85.6,86.2,86.7,87.2,87.7,88.2,88.6,89.0,89.3,89.7,90.0,90.3,90.6,91.0,91.3,91.6,91.8,92.0,92.2,92.5,92.7,92.9,93.1,93.3,93.5,93.7,93.9,94.0,94.2,94.4,94.5,94.6,94.8,95.0,95.1,95.2,95.4,95.6,95.7,95.8,95.9,96.0,96.1,96.2,96.3,96.4,96.5,96.6,96.7,96.8,96.9,97.0,97.1,97.2,97.3,97.4,97.5,97.6,97.7,97.8,97.8,97.9,98.0,98.1,98.2,98.2,98.3,98.4];
+const GIRLS = [13.7,14.4,15.1,15.8,16.6,17.3,18.0,18.8,19.5,20.3,21.0,21.8,22.5,23.2,24.0,24.8,25.6,26.4,27.2,28.0,28.9,29.7,30.5,31.3,32.1,33.0,34.0,35.0,36.0,37.0,38.0,39.1,40.2,41.3,42.5,43.9,45.2,46.7,48.0,49.5,51.0,52.9,55.5,57.8,61.0,65.0,68.0,71.8,75.0,77.0,78.8,80.2,81.2,82.2,83.1,84.0,84.8,85.3,86.1,86.7,87.2,87.8,88.3,88.8,89.3,89.8,90.2,90.7,91.1,91.4,91.8,92.1,92.3,92.6,92.9,93.2,93.5,93.7,94.0,94.2,94.5,94.7,94.9,95.1,95.3,95.4,95.6,95.8,96.0,96.2,96.3,96.4,96.5,96.6,96.7,96.8,96.9,97.0,97.1,97.2,97.3,97.4,97.5,97.6,97.7,97.8,98.0,98.1,98.2,98.3,98.3,98.4,98.5,98.6,98.7,98.8,98.9,99.0,99.1,99.1,99.2,99.3,99.4,99.4,99.5,99.6,99.6,99.7,99.8,99.9,100.0];
+
+function demAge(score, sex) {
+  const arr = sex === 'M' ? BOYS : GIRLS;
+  if (score < arr[0]) return { age: null, note: 'below 3.0 yr' };
+  if (score > arr[arr.length - 1]) return { age: null, note: 'above 16.0 yr' };
+  for (let i = 0; i < arr.length - 1; i++) {
+    if (score >= arr[i] && score <= arr[i+1]) {
+      const f = (arr[i+1] === arr[i]) ? 0 : (score - arr[i]) / (arr[i+1] - arr[i]);
+      return { age: 3.0 + (i + f) * 0.1, note: null };
+    }
+  }
+  return { age: null, note: 'out of range' };
+}
+
+// Parse ISO date (YYYY-MM-DD) from native date input into a Date object
+function parseISO(s) {
+  if (!s) return null;
+  const m = s.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  if (!m) return null;
+  const year = parseInt(m[1], 10), month = parseInt(m[2], 10), day = parseInt(m[3], 10);
+  if (month < 1 || month > 12 || day < 1 || day > 31) return null;
+  const d = new Date(year, month - 1, day);
+  if (d.getFullYear() !== year || d.getMonth() !== month - 1 || d.getDate() !== day) return null;
+  return d;
+}
+
+// Convert ISO YYYY-MM-DD to DD/MM/YYYY for display
+function isoToDMY(iso) {
+  if (!iso) return 'DD/MM/YYYY';
+  const m = iso.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  return m ? m[3] + '/' + m[2] + '/' + m[1] : 'DD/MM/YYYY';
+}
+
+function updateDateDisplays() {
+  document.getElementById('dobDisplay').textContent = isoToDMY(document.getElementById('dob').value);
+  document.getElementById('doxDisplay').textContent = isoToDMY(document.getElementById('dox').value);
+}
+
+function computeCA() {
+  const dobStr = document.getElementById('dob').value;
+  const doxStr = document.getElementById('dox').value;
+  const el = document.getElementById('ca');
+  el.classList.remove('ca-error');
+  if (!dobStr || !doxStr) { el.textContent = '—'; return null; }
+  const d1 = parseISO(dobStr), d2 = parseISO(doxStr);
+  if (!d1 || !d2) { el.textContent = 'invalid date'; el.classList.add('ca-error'); return null; }
+  if (d2 <= d1) { el.textContent = 'X-ray date is before birth date'; el.classList.add('ca-error'); return null; }
+  const y = (d2 - d1) / 86400000 / 365.25;
+  const yi = Math.floor(y), m = Math.floor((y - yi) * 12);
+  el.textContent = y.toFixed(2) + ' yr (' + yi + ' yr ' + m + ' mo)';
+  return y;
+}
+
+const state = {};
+TEETH.forEach(t => state[t] = null);
+function getScore(t, s, sex, table) {
+  table = table || S;
+  if (!table[t]) return undefined;
+  return table[t][sex === 'M' ? s : s + 'f'];
+}
+
+const grid = document.getElementById('grid');
+function render() {
+  grid.innerHTML = '';
+  const HEADER_TIPS = {
+    'Tooth': 'FDI tooth number with Demirjian notation in parentheses. The seven teeth of the lower left mandibular quadrant are used.',
+    'A': 'Stage A: beginning of calcification at the superior level of the crypt as inverted cones, no fusion of points.',
+    'B': 'Stage B: fusion of calcified points forms cusps, uniting to give a regularly outlined occlusal surface.',
+    'C': 'Stage C: enamel formation complete at occlusal surface, beginning of dentinal deposit, pulp chamber curved at occlusal border.',
+    'D': 'Stage D: crown formation complete to cementoenamel junction, pulp chamber trapezoidal in molars, beginning of root formation as a spicule.',
+    'E': 'Stage E: pulp chamber walls form straight lines, root length less than crown height, in molars initial bifurcation appears.',
+    'F': 'Stage F: pulp chamber walls form an isosceles triangle with funnel-shaped apex, root length equal to or greater than crown height.',
+    'G': 'Stage G: walls of the root canal are parallel, apical end still partially open (distal root in molars).',
+    'H': 'Stage H: apical end of root canal completely closed, periodontal membrane uniform around root and apex.',
+    'Score': 'The Demirjian self-weighted score for the selected stage of this tooth (1973 seven-teeth scoring). The four-teeth methods use different scores from Demirjian and Goldstein 1976, applied automatically to compute their respective dental ages.'
+  };
+  ['Tooth', ...STAGES, 'Score'].forEach(h => {
+    const d = document.createElement('div');
+    d.textContent = h; d.className = 'grid-header';
+    d.title = HEADER_TIPS[h] || '';
+    if (HEADER_TIPS[h]) d.style.cursor = 'help';
+    grid.appendChild(d);
+  });
+  const sex = document.getElementById('sex').value;
+  TEETH.forEach(t => {
+    const lbl = document.createElement('div');
+    lbl.textContent = NAMES[t]; lbl.className = 'tooth-label';
+    grid.appendChild(lbl);
+    STAGES.forEach(s => {
+      const sc = getScore(t, s, sex);
+      const cell = document.createElement('div');
+      if (sc === undefined) {
+        cell.textContent = '—'; cell.className = 'cell disabled';
+      } else {
+        cell.textContent = sc.toFixed(1);
+        cell.className = 'cell' + (state[t] === s ? ' selected' : '');
+        cell.onclick = () => { state[t] = (state[t] === s) ? null : s; render(); compute(); };
+        cell.onmouseenter = () => showDiagram(t, s);
+      }
+      grid.appendChild(cell);
+    });
+    const sv = document.createElement('div');
+    const v = state[t] ? getScore(t, state[t], sex) : null;
+    sv.textContent = (v !== null && v !== undefined) ? v.toFixed(1) : '—';
+    sv.className = 'score-cell';
+    grid.appendChild(sv);
+  });
+}
+
+function showDiagram(tooth, stage) {
+  const panel = document.getElementById('diagramPanel');
+  const type = TYPE[tooth];
+  document.getElementById('diagramTitle').textContent = NAMES[tooth] + ' — Stage ' + stage;
+  const hi = document.getElementById('chartHi');
+  if (MISSING[type] && MISSING[type].includes(stage)) {
+    hi.style.display = 'none';
+    document.getElementById('diagramDesc').textContent = 
+      'Stage ' + stage + ' is not illustrated for ' + type + 's in this reference chart. ' + DESC[stage];
+  } else {
+    hi.style.display = 'block';
+    hi.style.left = STAGE_X[stage] + '%';
+    hi.style.top = TYPE_Y[type] + '%';
+    hi.style.width = STAGE_W + '%';
+    hi.style.height = TYPE_H + '%';
+    document.getElementById('diagramDesc').textContent = DESC[stage];
+  }
+  panel.classList.remove('hidden');
+}
+
+// Helper: render one method's result card
+function renderResult(idAge, idDiff, age, sep, ca, range, note) {
+  const ageEl = document.getElementById(idAge);
+  const diffEl = document.getElementById(idDiff);
+  if (age === null) {
+    ageEl.textContent = '—';
+    diffEl.textContent = note || 'incomplete';
+    return;
+  }
+  const pi = 1.96 * sep;
+  ageEl.textContent = age.toFixed(2) + ' yr';
+  const piStr = '95% predictive interval ' + (age - pi).toFixed(2) + '–' + (age + pi).toFixed(2) + ' yr';
+  if (ca !== null) {
+    const d = age - ca, ad = Math.abs(d);
+    const flag = ad <= 1 ? 'within ±1 yr of chronological age' : ad <= pi ? 'within predictive interval' : 'outside predictive interval';
+    const outOfRange = (range && (ca < range[0] || ca > range[1]));
+    const warn = outOfRange ? ' · WARNING: chronological age outside ' + range[0] + '–' + range[1] + ' yr validity range' : '';
+    const sign = d >= 0 ? '+' : '';
+    diffEl.textContent = piStr + ' · difference from chronological age ' + sign + d.toFixed(2) + ' yr (' + flag + ')' + warn;
+  } else {
+    diffEl.textContent = piStr;
+  }
+}
+
+function sumTeeth(teeth, table, sex) {
+  let sum = 0;
+  for (const t of teeth) {
+    if (state[t] === null) return null;
+    const v = getScore(t, state[t], sex, table);
+    if (v === undefined) return null;
+    sum += v;
+  }
+  return sum;
+}
+
+function compute() {
+  const sex = document.getElementById('sex').value;
+  const ca = computeCA();
+  const sevenTeeth = ["37","36","35","34","33","32","31"];
+  const fourI = ["37","36","35","34"];
+  const fourII = ["37","35","34","31"];
+  const stagedCount = sevenTeeth.filter(t => state[t]).length;
+
+  // 7-teeth maturity score (Demirjian 1973 scoring)
+  const sum7 = sumTeeth(sevenTeeth, S, sex);
+  document.getElementById('sum7').textContent = sum7 === null ? stagedCount + '/7' : sum7.toFixed(2);
+  document.getElementById('sum7Note').textContent = sum7 === null ? 'staged so far' : 'sum of seven teeth';
+
+  // Demirjian 1973 classical (7 teeth)
+  if (sum7 !== null) {
+    const dem = demAge(sum7, sex);
+    if (dem.age !== null) {
+      const sep = sex === 'M' ? 0.87 : 0.73;
+      renderResult('r_dem', 'r_demDiff', dem.age, sep, ca, [3, 16]);
+    } else {
+      document.getElementById('r_dem').textContent = dem.note;
+      document.getElementById('r_demDiff').textContent = '';
+    }
+  } else {
+    renderResult('r_dem', 'r_demDiff', null, 0, ca, null, 'needs all 7 teeth');
+  }
+
+  // Duangto 2016 (7 teeth)
+  if (sum7 !== null) {
+    const age = sex === 'M'
+      ? 0.006297 * sum7 * sum7 - 0.804930 * sum7 + 32.591843
+      : 0.010677 * sum7 * sum7 - 1.538823 * sum7 + 61.955056;
+    const sep = sex === 'M' ? 0.83 : 0.90;
+    renderResult('r_du7', 'r_du7Diff', age, sep, ca, [6, 15]);
+  } else {
+    renderResult('r_du7', 'r_du7Diff', null, 0, ca, null, 'needs all 7 teeth');
+  }
+
+  // Duangto 2018 Method I (4 teeth: 37, 36, 35, 34)
+  const sum4I = sumTeeth(fourI, S4I, sex);
+  if (sum4I !== null) {
+    const age = sex === 'M'
+      ? 0.006010 * sum4I * sum4I - 0.791710 * sum4I + 33.976883
+      : 0.008765 * sum4I * sum4I - 1.256322 * sum4I + 52.808595;
+    const sep = sex === 'M' ? 0.818 : 0.766;
+    renderResult('r_du4I', 'r_du4IDiff', age, sep, ca, [7, 15]);
+  } else {
+    renderResult('r_du4I', 'r_du4IDiff', null, 0, ca, null, 'needs teeth 37, 36, 35, 34');
+  }
+
+  // Duangto 2018 Method II (4 teeth: 37, 35, 34, 31)
+  const sum4II = sumTeeth(fourII, S4II, sex);
+  if (sum4II !== null) {
+    const age = sex === 'M'
+      ? 0.009734 * sum4II * sum4II - 1.415858 * sum4II + 59.205899
+      : 0.016941 * sum4II * sum4II - 2.683997 * sum4II + 113.965699;
+    const sep = sex === 'M' ? 0.843 : 0.790;
+    renderResult('r_du4II', 'r_du4IIDiff', age, sep, ca, [7, 15]);
+  } else {
+    renderResult('r_du4II', 'r_du4IIDiff', null, 0, ca, null, 'needs teeth 37, 35, 34, 31');
+  }
+}
+
+// Format ISO date (YYYY-MM-DD) as DD/MM/YYYY
+function formatDDMMYYYY(isoDate) {
+  if (!isoDate) return '';
+  const parts = isoDate.split('-');
+  if (parts.length !== 3) return isoDate;
+  return parts[2] + '/' + parts[1] + '/' + parts[0];
+}
+
+// Extract just the numeric age (e.g. "12.30 yr" -> "12.30") for spreadsheet pasting
+function extractAge(text) {
+  const match = text.match(/^(-?\d+\.\d+)/);
+  return match ? match[1] : '';
+}
+// Extract decimal CA from "9.45 yr (9y 5m)" -> "9.45"
+function extractCA(text) {
+  const match = text.match(/^(\d+\.\d+)/);
+  return match ? match[1] : '';
+}
+
+const COPY_HEADERS = [
+  'Case ID', 'Sex', 'DOB', 'Date of X-ray', 'CA (yr)',
+  'Tooth 37', 'Tooth 36', 'Tooth 35', 'Tooth 34', 'Tooth 33', 'Tooth 32', 'Tooth 31',
+  'Maturity score (7T)',
+  'Demirjian 1973 (yr)', 'Δ Demirjian (yr)',
+  'Duangto 2016 7T (yr)', 'Δ Duangto 2016 (yr)',
+  'Duangto 2018 4T-I (yr)', 'Δ Duangto 4T-I (yr)',
+  'Duangto 2018 4T-II (yr)', 'Δ Duangto 4T-II (yr)'
+];
+
+function copyToClipboard(text, btnId) {
+  navigator.clipboard.writeText(text).then(() => {
+    const btn = document.getElementById(btnId);
+    const orig = btn.textContent;
+    btn.textContent = 'Copied!';
+    setTimeout(() => btn.textContent = orig, 1500);
+  }).catch(() => alert('Copy failed:\n' + text));
+}
+
+function copyResults() {
+  const sex = document.getElementById('sex').value;
+  const caText = document.getElementById('ca').textContent;
+  const caNum = extractCA(caText);
+  const ca = caNum ? parseFloat(caNum) : null;
+
+  // Extract dental age and compute delta for each method
+  function ageAndDelta(elementId) {
+    const age = extractAge(document.getElementById(elementId).textContent);
+    if (!age || ca === null) return [age, ''];
+    const d = parseFloat(age) - ca;
+    return [age, (d >= 0 ? '+' : '') + d.toFixed(2)];
+  }
+
+  const [demAge, demDelta] = ageAndDelta('r_dem');
+  const [du7Age, du7Delta] = ageAndDelta('r_du7');
+  const [du4IAge, du4IDelta] = ageAndDelta('r_du4I');
+  const [du4IIAge, du4IIDelta] = ageAndDelta('r_du4II');
+
+  const dataRow = [
+    document.getElementById('caseId').value || '',
+    sex,
+    isoToDMY(document.getElementById('dob').value).replace(/^DD\/MM\/YYYY$/, ''),
+    isoToDMY(document.getElementById('dox').value).replace(/^DD\/MM\/YYYY$/, ''),
+    caNum,
+    state["37"] || '', state["36"] || '', state["35"] || '', state["34"] || '',
+    state["33"] || '', state["32"] || '', state["31"] || '',
+    extractAge(document.getElementById('sum7').textContent),
+    demAge, demDelta,
+    du7Age, du7Delta,
+    du4IAge, du4IDelta,
+    du4IIAge, du4IIDelta
+  ];
+  const text = COPY_HEADERS.join('\t') + '\n' + dataRow.join('\t');
+  copyToClipboard(text, 'copyBtn');
+}
+
+document.getElementById('sex').addEventListener('change', () => { render(); compute(); });
+document.getElementById('dob').addEventListener('change', () => { updateDateDisplays(); compute(); });
+document.getElementById('dox').addEventListener('change', () => { updateDateDisplays(); compute(); });
+document.getElementById('reset').addEventListener('click', () => {
+  TEETH.forEach(t => state[t] = null);
+  document.getElementById('dob').value = '';
+  document.getElementById('dox').value = '';
+  document.getElementById('caseId').value = '';
+  updateDateDisplays(); render(); compute();
+});
+document.getElementById('copyBtn').addEventListener('click', copyResults);
+document.getElementById('printBtn').addEventListener('click', () => window.print());
+document.getElementById('diagramClose').addEventListener('click', () => {
+  document.getElementById('diagramPanel').classList.add('hidden');
+});
+
+updateDateDisplays();
+render();
+</script>
+</body>
+</html>
