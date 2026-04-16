@@ -17,8 +17,8 @@ All results include 95% predictive intervals.
 
 | File | Description |
 |------|-------------|
-| `dental_age_calculator.html` | Desktop version with hover-to-highlight stage reference diagram |
-| `dental_age_calculator_mobile_v2.html` | Mobile-friendly version with embedded stage reference image and touch-optimized tooth staging blocks |
+| `dental_age_calculator_desktop.html` | Desktop version with hover-to-highlight stage reference diagram |
+| `dental_age_calculator_mobile.html` | Mobile-friendly version with embedded stage reference image and touch-optimized tooth staging blocks |
 
 Both are self-contained single HTML files — no server, no installation, no external dependencies.
 
