@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Dental Age Calculator — Demirjian & Duangto</title>
+<title>Dental Age Calculator — Demirjian, Willems & Duangto</title>
 <style>
 *{box-sizing:border-box}
 body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Arial,sans-serif;max-width:1100px;margin:0 auto;padding:20px;background:#f7f7f5;color:#2c2c2a;line-height:1.5}
@@ -44,17 +44,97 @@ button.primary:hover{background:#185fa5}
 .chart-hi{position:absolute;border:3px solid #d85a30;border-radius:4px;box-shadow:0 0 0 2px rgba(255,255,255,0.8);pointer-events:none;transition:all 0.15s ease-out}
 .hint{font-size:11px;color:#888780;font-style:italic;margin:6px 0 10px}
 .date-display{font-size:12px;color:#5f5e5a;margin-top:2px;font-style:italic}
+
+/* ---- Panoramic radiograph ---- */
+.pano-head{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:8px}
+.pano-title{font-size:13px;font-weight:500}
+.pano-drop{border:1.5px dashed #cfcdc3;border-radius:10px;background:#fbfaf7;padding:22px 16px;text-align:center;color:#7a7973;font-size:13px;cursor:pointer;transition:background .15s,border-color .15s}
+.pano-drop:hover,.pano-drop.dragover{background:#f1efe8;border-color:#378add;color:#3d3c38}
+.pano-drop .pano-drop-sub{font-size:11px;color:#96958d;margin-top:4px}
+.pano-view{display:none}
+.pano-view.show{display:block}
+.pano-drop.hide{display:none}
+.pano-figure{background:#111;border-radius:8px;padding:6px;text-align:center}
+.pano-figure img{max-width:100%;max-height:340px;display:block;margin:0 auto;border-radius:4px}
+.pano-caption{font-size:11px;color:#5f5e5a;margin-top:6px;display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.pano-caption input{font-size:12px;padding:5px 8px;flex:1;min-width:180px}
+.pano-meta{font-size:11px;color:#96958d}
+
+/* ---- Print-only summary block ---- */
+.print-only{display:none}
+.print-head{border:1px solid #e0ded5;border-radius:8px;padding:8px 10px;margin-bottom:8px;font-size:10px;line-height:1.45}
+.print-head b{font-weight:600}
+.print-head .ph-row{display:flex;gap:18px;flex-wrap:wrap}
+
 @media (max-width:1000px){.diagram-panel{position:static;width:100%;margin-bottom:16px;box-shadow:none}}
-@media print{body{background:white}.diagram-panel{display:none}button{display:none}}
+
+/* =========================================================
+   PRINT — tuned to fit one A4 page at 100% scale
+   ========================================================= */
+@page{size:A4 portrait;margin:9mm 10mm}
+@media print{
+  html,body{background:#fff}
+  body{max-width:none;margin:0;padding:0;font-size:9px;line-height:1.35;
+       -webkit-print-color-adjust:exact;print-color-adjust:exact}
+  h1{font-size:15px;margin:0 0 2px}
+  .subtitle{font-size:9px;margin-bottom:6px}
+  .card{padding:7px 9px;margin-bottom:6px;border-radius:6px;border-color:#ddd;break-inside:avoid;page-break-inside:avoid}
+  button,.diagram-panel,.hint,.screen-only,.pano-drop,.pano-caption input{display:none !important}
+  .print-only{display:block}
+
+  /* patient data printed as text, not form fields */
+  #inputCard{display:none}
+  .print-head{margin-bottom:6px;padding:6px 8px}
+
+  /* staging grid */
+  .grid{font-size:8px;gap:2px;grid-template-columns:62px repeat(8,1fr) 46px}
+  .grid-header{padding:2px}
+  .tooth-label{padding:3px 2px;font-size:8px}
+  .cell{padding:3px 2px;border-radius:3px}
+  .cell.selected{background:#e6f1fb !important;border-color:#378add !important;color:#0c447c !important}
+  .score-cell{padding:3px 2px}
+
+  /* results */
+  .results{grid-template-columns:repeat(3,1fr);gap:5px}
+  .result-card{background:#f7f6f1 !important;padding:5px 7px;border-radius:5px}
+  .result-label{font-size:8px}
+  .result-value{font-size:13px;margin:0}
+  .result-note{font-size:7px;line-height:1.3}
+
+  /* panoramic film */
+  #panoCard{padding:5px}
+  .pano-head{margin-bottom:3px}
+  .pano-title{font-size:9px}
+  .pano-figure{padding:3px;border-radius:4px}
+  .pano-figure img{max-height:65mm}
+  .pano-caption{font-size:8px;margin-top:3px}
+
+  /* footnotes */
+  .footer-note{font-size:6.6px;line-height:1.32;margin-top:5px}
+  .footer-note p{margin:0 0 3px !important}
+  .footer-note ul{margin:0 0 3px !important;padding-left:12px !important}
+  .footer-note li{margin:0}
+}
 </style>
 </head>
 <body>
 
-<h1>Dental Age Calculator <span style="font-size:14px;font-weight:400;color:#5f5e5a">(desktop)</span></h1>
-<div class="subtitle">Demirjian (1973, 1976) and Duangto (2016, 2018) methods — for teaching and research use</div>
-<div style="font-size:12px;color:#5f5e5a;margin:-12px 0 20px;font-style:italic">Developed by Chanika Manmontri with the assistance of Claude (Anthropic). For education and research purposes only.</div>
+<h1>Dental Age Calculator <span style="font-size:14px;font-weight:400;color:#5f5e5a" class="screen-only">(desktop)</span></h1>
+<div class="subtitle">Demirjian (1973, 1976), Willems (2001) and Duangto (2016, 2018) methods — for teaching and research use</div>
 
-<div class="card">
+<!-- printed patient summary (replaces the form controls on paper) -->
+<div class="print-only print-head" id="printHead">
+  <div class="ph-row">
+    <span><b>Case ID:</b> <span id="phCase">—</span></span>
+    <span><b>Sex:</b> <span id="phSex">—</span></span>
+    <span><b>Date of birth:</b> <span id="phDob">—</span></span>
+    <span><b>Date of X-ray:</b> <span id="phDox">—</span></span>
+    <span><b>Chronological age:</b> <span id="phCa">—</span></span>
+  </div>
+  <div class="ph-row" style="margin-top:2px;color:#5f5e5a"><span id="phStages"></span></div>
+</div>
+
+<div class="card" id="inputCard">
 <div class="row">
 <div class="field"><label>Case ID (optional)</label><input type="text" id="caseId" placeholder="e.g. P001" style="width:120px"></div>
 <div class="field"><label>Sex</label><select id="sex"><option value="M">Male</option><option value="F">Female</option></select></div>
@@ -65,10 +145,36 @@ button.primary:hover{background:#185fa5}
 </div>
 </div>
 
+<!-- Panoramic radiograph -->
+<div class="card" id="panoCard">
+  <div class="pano-head">
+    <div class="pano-title">Panoramic radiograph</div>
+    <span class="pano-meta screen-only" id="panoMeta"></span>
+    <span style="flex:1"></span>
+    <button id="panoReplace" class="screen-only" style="display:none">Replace image</button>
+    <button id="panoRemove" class="screen-only" style="display:none">Remove</button>
+  </div>
+
+  <div class="pano-drop" id="panoDrop">
+    Click to choose a panoramic radiograph, or drag &amp; drop the file here
+    <div class="pano-drop-sub">You can also paste an image from the clipboard (Ctrl&nbsp;+&nbsp;V). JPG, PNG, WebP. The image stays on this computer — nothing is uploaded anywhere.</div>
+  </div>
+  <input type="file" id="panoFile" accept="image/*" style="display:none">
+
+  <div class="pano-view" id="panoView">
+    <div class="pano-figure"><img id="panoImg" alt="Panoramic radiograph"></div>
+    <div class="pano-caption">
+      <span class="screen-only">Caption:</span>
+      <input type="text" id="panoCaptionInput" class="screen-only" placeholder="e.g. OPG 25/08/2026, right side marked">
+      <span class="print-only" id="panoCaptionPrint"></span>
+    </div>
+  </div>
+</div>
+
 <div class="card">
 <div class="hint">Click a stage cell to select it. Hover over a stage cell to see the matching diagram on the reference chart, or hover over a column header to see the stage criteria. Blank cells = stage not defined for that tooth.</div>
-<div style="font-size:11px;color:#5f5e5a;background:#f7f6f1;border-radius:6px;padding:8px 12px;margin-bottom:10px;line-height:1.5">
-<strong>How to use.</strong> Stage each of the seven mandibular teeth by clicking the cell that matches what you see on the panoramic radiograph. The calculator will automatically compute four dental age estimates: the classical Demirjian 1973 (7 teeth), the Thai Duangto 2016 (7 teeth), and the two Thai Duangto 2018 four-teeth methods. Methods that need teeth you have not yet staged will show a hint. Scores are sex-specific because girls reach the same dental developmental state at younger chronological ages than boys.
+<div class="screen-only" style="font-size:11px;color:#5f5e5a;background:#f7f6f1;border-radius:6px;padding:8px 12px;margin-bottom:10px;line-height:1.5">
+<strong>How to use.</strong> Stage each of the seven mandibular teeth by clicking the cell that matches what you see on the panoramic radiograph. The calculator will automatically compute five dental age estimates: the classical Demirjian 1973 (7 teeth), the Willems 2001 Belgian adaptation (7 teeth), the Thai Duangto 2016 (7 teeth), and the two Thai Duangto 2018 four-teeth methods. Methods that need teeth you have not yet staged will show a hint. Scores are sex-specific because girls reach the same dental developmental state at younger chronological ages than boys.
 </div>
 <div class="grid" id="grid"></div>
 </div>
@@ -77,6 +183,7 @@ button.primary:hover{background:#185fa5}
 <div class="results">
 <div class="result-card"><div class="result-label">Maturity score (7 teeth)</div><div class="result-value" id="sum7">—</div><div class="result-note" id="sum7Note">Demirjian 1973</div></div>
 <div class="result-card"><div class="result-label">Demirjian 1973 (7 teeth)</div><div class="result-value" id="r_dem">—</div><div class="result-note" id="r_demDiff">awaiting staging</div></div>
+<div class="result-card"><div class="result-label">Willems 2001 (7 teeth)</div><div class="result-value" id="r_wil">—</div><div class="result-note" id="r_wilDiff">awaiting staging</div></div>
 <div class="result-card"><div class="result-label">Duangto 2016 (7 teeth)</div><div class="result-value" id="r_du7">—</div><div class="result-note" id="r_du7Diff">awaiting staging</div></div>
 <div class="result-card"><div class="result-label">Duangto 2018 — 4 teeth I (37,36,35,34)</div><div class="result-value" id="r_du4I">—</div><div class="result-note" id="r_du4IDiff">awaiting staging</div></div>
 <div class="result-card"><div class="result-label">Duangto 2018 — 4 teeth II (37,35,34,31)</div><div class="result-value" id="r_du4II">—</div><div class="result-note" id="r_du4IIDiff">awaiting staging</div></div>
@@ -86,16 +193,25 @@ button.primary:hover{background:#185fa5}
 <button id="printBtn">Print</button>
 </div>
 <div class="footer-note">
-<p style="margin:0 0 8px"><strong>About this tool.</strong> Developed by Chanika Manmontri with the assistance of Claude (Anthropic), 2026. For education and research purposes only; not for clinical or forensic decision-making without verification against original source materials. Chronological age = (date of X-ray − date of birth) / 365.25. Last updated: 16 April 2026.</p>
+<p style="margin:0 0 8px"><strong>About this tool.</strong> Developed by Chanika Manmontri with the assistance of Claude (Anthropic), 2026. Intended for teaching and research — not for clinical or forensic decision-making without verification against original source materials. Chronological age = (date of X-ray − date of birth) / 365.25. Last updated: 26 August 2026.</p>
 
-<p style="margin:0 0 8px"><strong>Valid age ranges.</strong> Demirjian 1973: 3.0–16.0 yr · Duangto 2016 (7 teeth): 6–15 yr · Duangto 2018 (4 teeth I and II): 7–15 yr. Results outside these ranges are flagged.</p>
+<p style="margin:0 0 8px"><strong>Valid age ranges and reference samples.</strong></p>
+<ul style="margin:0 0 8px;padding-left:18px">
+<li><strong>Demirjian 1973</strong> — French-Canadian reference sample of 1,446 boys and 1,482 girls aged 2–20 yr. Useful range 3.0–16.0 yr (bounds of the published conversion table).</li>
+<li><strong>Demirjian &amp; Goldstein 1976</strong> (4-teeth scoring, used by Duangto 2018) — extended French-Canadian sample of 2,407 boys and 2,349 girls; percentile standards published for 2.5–17.0 yr.</li>
+<li><strong>Willems 2001</strong> — Belgian Caucasian sample; 1,029 boys (age range 1.8–18.0 yr) and 1,087 girls (2.1–18.0 yr) were used to build the scoring tables; validation sample of 195 boys (2.3–17.4 yr) and 160 girls (2.4–18.0 yr). Effective working range ~3–17 yr.</li>
+<li><strong>Duangto 2016</strong> (7 teeth) — Thai sample; 487 males and 647 females aged 6–15 yr.</li>
+<li><strong>Duangto 2018</strong> (4 teeth, Methods I and II) — Thai sample; 360 males and 360 females aged 7–15 yr.</li>
+</ul>
+<p style="margin:0 0 8px">Results whose chronological age falls outside these ranges are flagged in the result note.</p>
 
-<p style="margin:0 0 8px"><strong>95% predictive intervals</strong> are computed as ±1.96 × SEP, where SEPs are taken from the original papers. Duangto 2016 reports 0.83 yr (M) / 0.90 yr (F) for the seven-teeth Thai equation and 0.87 yr (M) / 0.73 yr (F) for the classical Demirjian method when applied to the Thai validation sample. Duangto 2018 reports 0.818 / 0.766 yr for Method I and 0.843 / 0.790 yr for Method II.</p>
+<p style="margin:0 0 8px"><strong>95% predictive intervals</strong> are computed as ±1.96 × SEP, where SEPs are taken from the original papers. Willems 2001 does not report a formal SEP; the standard deviations of the error in the validation sample (0.9 yr for boys, 1.3 yr for girls) are used here as an approximation. Duangto 2016 reports 0.83 yr (M) / 0.90 yr (F) for the seven-teeth Thai equation and 0.87 yr (M) / 0.73 yr (F) for the classical Demirjian method when applied to the Thai validation sample. Duangto 2018 reports 0.818 / 0.766 yr for Method I and 0.843 / 0.790 yr for Method II.</p>
 
 <p style="margin:0 0 4px"><strong>Sources.</strong></p>
 <ul style="margin:0;padding-left:18px">
 <li>Demirjian A, Goldstein H, Tanner JM. A new system of dental age assessment. <em>Hum Biol</em> 1973;45:211–227. <span style="color:#888780">(7-teeth scoring table and dental age conversion table)</span></li>
 <li>Demirjian A, Goldstein H. New systems for dental maturity based on seven and four teeth. <em>Ann Hum Biol</em> 1976;3:411–421. <span style="color:#888780">(4-teeth Method I and Method II scoring tables)</span></li>
+<li>Willems G, Van Olmen A, Spiessens B, Carels C. Dental age estimation in Belgian children: Demirjian's technique revisited. <em>J Forensic Sci</em> 2001;46(4):893–895. <span style="color:#888780">(7-teeth scoring tables with age scores expressed directly in years, adapted for a Belgian Caucasian population)</span></li>
 <li>Duangto P, Janhom A, Prasitwattanaseree S, Mahakkanukrauh P, Iamaroon A. New prediction models for dental age estimation in Thai children and adolescents. <em>Forensic Sci Int</em> 2016;266:583.e1–e5. <span style="color:#888780">(Thai 7-teeth regression equation)</span></li>
 <li>Duangto P, Janhom A, Prasitwattanaseree S, Iamaroon A. New equations for age estimation using four permanent mandibular teeth in Thai children and adolescents. <em>Int J Legal Med</em> 2018;132:1743–1747. <span style="color:#888780">(Thai 4-teeth regression equations)</span></li>
 <li>Azarbakhsh G, Iranparvar P, Tehranchi A, Moshfeghi M. Relationship of vitamin D deficiency with cervical vertebral maturation and dental age in adolescents: a cross-sectional study. <em>Int J Dent</em> 2022;2022:7762873. <span style="color:#888780">(stage reference chart, adapted under CC BY 4.0)</span></li>
@@ -137,6 +253,19 @@ const S4II = {
 "34":{B:7.1,C:11.6,D:16.9,E:22.8,F:25.8,G:26.8,H:27.9, Bf:5.9,Cf:10.2,Df:16.2,Ef:21.9,Ff:24.6,Gf:25.6,Hf:26.8},
 "31":{C:0.0,D:7.4,E:11.5,F:14.6,G:18.9,H:25.7, Cf:0.0,Df:8.1,Ef:12.2,Ff:15.6,Gf:20.7,Hf:27.0}
 };
+// Willems 2001 Tables 1 & 2: 7-teeth age scores expressed directly in years.
+// Dental age = sum of the seven scores (no conversion table needed).
+// Negative values for girls' first and second bicuspids at early stages are
+// an artefact of the weighted ANOVA (multicollinearity) and are meaningful only in the total sum.
+const SW = {
+"37":{A:0.18,B:0.48,C:0.71,D:0.80,E:1.31,F:2.00,G:2.48,H:4.17, Af:0.14,Bf:0.11,Cf:0.21,Df:0.32,Ef:0.66,Ff:1.28,Gf:2.09,Hf:4.04},
+"36":{D:0.69,E:1.14,F:1.60,G:1.95,H:2.15, Df:0.62,Ef:0.90,Ff:1.56,Gf:1.82,Hf:2.21},
+"35":{A:0.08,B:0.05,C:0.12,D:0.27,E:0.33,F:0.45,G:0.40,H:1.15, Af:-0.19,Bf:0.01,Cf:0.27,Df:0.17,Ef:0.35,Ff:0.35,Gf:0.55,Hf:1.51},
+"34":{A:0.15,B:0.56,C:0.75,D:1.11,E:1.48,F:2.03,G:2.43,H:2.83, Af:-0.95,Bf:-0.15,Cf:0.16,Df:0.41,Ef:0.60,Ff:1.27,Gf:1.58,Hf:2.19},
+"33":{D:0.04,E:0.31,F:0.47,G:1.09,H:1.90, Cf:0.60,Df:0.54,Ef:0.62,Ff:1.08,Gf:1.72,Hf:2.00},
+"32":{C:0.55,D:0.63,E:0.74,F:1.08,G:1.32,H:1.64, Df:0.29,Ef:0.32,Ff:0.49,Gf:0.79,Hf:0.70},
+"31":{C:1.68,D:1.49,E:1.50,F:1.86,G:2.07,H:2.19, Cf:1.83,Df:2.19,Ef:2.34,Ff:2.82,Gf:3.19,Hf:3.14}
+};
 // Method definitions: which scoring table, which teeth to require
 const METHODS = {
   '7': { label: '7 teeth (Demirjian 1973 / Duangto 2016)', table: S, teeth: ["37","36","35","34","33","32","31"], range: [6, 15] },
@@ -160,11 +289,6 @@ H: "Apical end of root canal completely closed (distal root in molars). Periodon
 };
 
 // Stage reference chart cell coordinates (% of image).
-// Landscape layout: 8 stage columns (A-H) × 4 tooth-type rows (molar, premolar, canine, incisor).
-// Box positions are computed so each box is centered on its target cell.
-// STAGE_X[s] is the LEFT edge; STAGE_W is the box width.
-// Letter centers measured from image: A=20, B=31, C=41, D=51, E=62, F=72, G=82, H=92 (%)
-// Label centers measured: molar=20, premolar=42, canine=63, incisor=83 (%)
 const STAGE_X = { A: 15, B: 26, C: 36, D: 46, E: 57, F: 67, G: 77, H: 87 };
 const STAGE_W = 10;
 const TYPE_Y = { molar: 11, premolar: 33, canine: 54, incisor: 74 };
@@ -289,7 +413,7 @@ function showDiagram(tooth, stage) {
   const hi = document.getElementById('chartHi');
   if (MISSING[type] && MISSING[type].includes(stage)) {
     hi.style.display = 'none';
-    document.getElementById('diagramDesc').textContent = 
+    document.getElementById('diagramDesc').textContent =
       'Stage ' + stage + ' is not illustrated for ' + type + 's in this reference chart. ' + DESC[stage];
   } else {
     hi.style.display = 'block';
@@ -364,6 +488,15 @@ function compute() {
     renderResult('r_dem', 'r_demDiff', null, 0, ca, null, 'needs all 7 teeth');
   }
 
+  // Willems 2001 (7 teeth) — sum of per-tooth year-scores = dental age in years
+  const sumW = sumTeeth(sevenTeeth, SW, sex);
+  if (sumW !== null) {
+    const sep = sex === 'M' ? 0.9 : 1.3;
+    renderResult('r_wil', 'r_wilDiff', sumW, sep, ca, [3, 17]);
+  } else {
+    renderResult('r_wil', 'r_wilDiff', null, 0, ca, null, 'needs all 7 teeth');
+  }
+
   // Duangto 2016 (7 teeth)
   if (sum7 !== null) {
     const age = sex === 'M'
@@ -398,7 +531,115 @@ function compute() {
   } else {
     renderResult('r_du4II', 'r_du4IIDiff', null, 0, ca, null, 'needs teeth 37, 35, 34, 31');
   }
+
+  updatePrintHead();
 }
+
+// ---------- print header (patient data as plain text on paper) ----------
+function updatePrintHead() {
+  const dash = '—';
+  const caseId = document.getElementById('caseId').value.trim();
+  const sex = document.getElementById('sex').value === 'M' ? 'Male' : 'Female';
+  const dob = isoToDMY(document.getElementById('dob').value);
+  const dox = isoToDMY(document.getElementById('dox').value);
+  const caTxt = document.getElementById('ca').textContent;
+  document.getElementById('phCase').textContent = caseId || dash;
+  document.getElementById('phSex').textContent = sex;
+  document.getElementById('phDob').textContent = dob === 'DD/MM/YYYY' ? dash : dob;
+  document.getElementById('phDox').textContent = dox === 'DD/MM/YYYY' ? dash : dox;
+  document.getElementById('phCa').textContent = caTxt;
+  const staged = TEETH.filter(t => state[t]).map(t => t + '=' + state[t]);
+  document.getElementById('phStages').textContent =
+    staged.length ? 'Stages recorded — ' + staged.join(', ') : '';
+  document.getElementById('panoCaptionPrint').textContent =
+    document.getElementById('panoCaptionInput').value.trim();
+}
+
+// ---------- panoramic radiograph ----------
+const panoDrop = document.getElementById('panoDrop');
+const panoFile = document.getElementById('panoFile');
+const panoView = document.getElementById('panoView');
+const panoImg = document.getElementById('panoImg');
+const panoRemove = document.getElementById('panoRemove');
+const panoReplace = document.getElementById('panoReplace');
+const panoMeta = document.getElementById('panoMeta');
+
+const MAX_W = 2200; // downscale very large films so printing stays fast
+
+function loadPanoFile(file) {
+  if (!file || !file.type.startsWith('image/')) {
+    alert('Please choose an image file (JPG, PNG or WebP).');
+    return;
+  }
+  const reader = new FileReader();
+  reader.onload = e => {
+    const img = new Image();
+    img.onload = () => {
+      let dataUrl = e.target.result;
+      if (img.naturalWidth > MAX_W) {
+        const scale = MAX_W / img.naturalWidth;
+        const c = document.createElement('canvas');
+        c.width = MAX_W;
+        c.height = Math.round(img.naturalHeight * scale);
+        c.getContext('2d').drawImage(img, 0, 0, c.width, c.height);
+        dataUrl = c.toDataURL('image/jpeg', 0.9);
+      }
+      panoImg.src = dataUrl;
+      panoView.classList.add('show');
+      panoDrop.classList.add('hide');
+      panoRemove.style.display = '';
+      panoReplace.style.display = '';
+      panoMeta.textContent = (file.name || 'pasted image') + ' · ' +
+        img.naturalWidth + '×' + img.naturalHeight + ' px';
+      if (!document.getElementById('panoCaptionInput').value.trim()) {
+        const dox = isoToDMY(document.getElementById('dox').value);
+        if (dox !== 'DD/MM/YYYY') document.getElementById('panoCaptionInput').value = 'Panoramic radiograph, ' + dox;
+      }
+      updatePrintHead();
+    };
+    img.onerror = () => alert('That file could not be read as an image.');
+    img.src = e.target.result;
+  };
+  reader.readAsDataURL(file);
+}
+
+function clearPano() {
+  panoImg.removeAttribute('src');
+  panoView.classList.remove('show');
+  panoDrop.classList.remove('hide');
+  panoRemove.style.display = 'none';
+  panoReplace.style.display = 'none';
+  panoMeta.textContent = '';
+  panoFile.value = '';
+  document.getElementById('panoCaptionInput').value = '';
+  updatePrintHead();
+}
+
+panoDrop.addEventListener('click', () => panoFile.click());
+panoReplace.addEventListener('click', () => panoFile.click());
+panoRemove.addEventListener('click', clearPano);
+panoFile.addEventListener('change', e => { if (e.target.files[0]) loadPanoFile(e.target.files[0]); });
+['dragenter','dragover'].forEach(ev => panoDrop.addEventListener(ev, e => {
+  e.preventDefault(); panoDrop.classList.add('dragover');
+}));
+['dragleave','drop'].forEach(ev => panoDrop.addEventListener(ev, e => {
+  e.preventDefault(); panoDrop.classList.remove('dragover');
+}));
+panoDrop.addEventListener('drop', e => {
+  if (e.dataTransfer.files && e.dataTransfer.files[0]) loadPanoFile(e.dataTransfer.files[0]);
+});
+document.addEventListener('paste', e => {
+  const items = e.clipboardData && e.clipboardData.items;
+  if (!items) return;
+  for (const it of items) {
+    if (it.type && it.type.startsWith('image/')) {
+      const f = it.getAsFile();
+      if (f) { loadPanoFile(f); e.preventDefault(); }
+      return;
+    }
+  }
+});
+document.getElementById('panoCaptionInput').addEventListener('input', updatePrintHead);
 
 // Format ISO date (YYYY-MM-DD) as DD/MM/YYYY
 function formatDDMMYYYY(isoDate) {
@@ -424,6 +665,7 @@ const COPY_HEADERS = [
   'Tooth 37', 'Tooth 36', 'Tooth 35', 'Tooth 34', 'Tooth 33', 'Tooth 32', 'Tooth 31',
   'Maturity score (7T)',
   'Demirjian 1973 (yr)', 'Δ Demirjian (yr)',
+  'Willems 2001 (yr)', 'Δ Willems (yr)',
   'Duangto 2016 7T (yr)', 'Δ Duangto 2016 (yr)',
   'Duangto 2018 4T-I (yr)', 'Δ Duangto 4T-I (yr)',
   'Duangto 2018 4T-II (yr)', 'Δ Duangto 4T-II (yr)'
@@ -453,6 +695,7 @@ function copyResults() {
   }
 
   const [demAge, demDelta] = ageAndDelta('r_dem');
+  const [wilAge, wilDelta] = ageAndDelta('r_wil');
   const [du7Age, du7Delta] = ageAndDelta('r_du7');
   const [du4IAge, du4IDelta] = ageAndDelta('r_du4I');
   const [du4IIAge, du4IIDelta] = ageAndDelta('r_du4II');
@@ -467,6 +710,7 @@ function copyResults() {
     state["33"] || '', state["32"] || '', state["31"] || '',
     extractAge(document.getElementById('sum7').textContent),
     demAge, demDelta,
+    wilAge, wilDelta,
     du7Age, du7Delta,
     du4IAge, du4IDelta,
     du4IIAge, du4IIDelta
@@ -478,11 +722,13 @@ function copyResults() {
 document.getElementById('sex').addEventListener('change', () => { render(); compute(); });
 document.getElementById('dob').addEventListener('change', () => { updateDateDisplays(); compute(); });
 document.getElementById('dox').addEventListener('change', () => { updateDateDisplays(); compute(); });
+document.getElementById('caseId').addEventListener('input', updatePrintHead);
 document.getElementById('reset').addEventListener('click', () => {
   TEETH.forEach(t => state[t] = null);
   document.getElementById('dob').value = '';
   document.getElementById('dox').value = '';
   document.getElementById('caseId').value = '';
+  clearPano();
   updateDateDisplays(); render(); compute();
 });
 document.getElementById('copyBtn').addEventListener('click', copyResults);
@@ -490,9 +736,11 @@ document.getElementById('printBtn').addEventListener('click', () => window.print
 document.getElementById('diagramClose').addEventListener('click', () => {
   document.getElementById('diagramPanel').classList.add('hidden');
 });
+window.addEventListener('beforeprint', updatePrintHead);
 
 updateDateDisplays();
 render();
+compute();
 </script>
 </body>
 </html>
