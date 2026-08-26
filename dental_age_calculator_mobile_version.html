@@ -18,7 +18,7 @@ button{cursor:pointer;background:#f1efe8}
 button:hover{background:#e8e6dd}
 button.primary{background:#378add;color:white;border-color:#378add}
 button.primary:hover{background:#185fa5}
-.ca-display{font-size:16px;font-weight:500;min-height:36px;display:flex;flex-direction:column;justify-content:center;padding:0 8px;line-height:1.3}
+.ca-display{font-size:19px;font-weight:600;color:#0c447c;min-height:36px;display:flex;flex-direction:column;justify-content:center;padding:0 8px;line-height:1.3}
 .ca-error{color:#a32d2d}
 .grid{display:grid;grid-template-columns:90px repeat(8,1fr) 70px;gap:4px;font-size:12px}
 .grid-header{padding:6px 4px;font-weight:500;color:#5f5e5a;text-align:center}
@@ -28,8 +28,14 @@ button.primary:hover{background:#185fa5}
 .cell.selected{background:#e6f1fb;color:#0c447c;font-weight:500;border-color:#378add}
 .cell.disabled{color:#b4b2a9;background:transparent;cursor:default;border-color:transparent}
 .score-cell{padding:8px 4px;text-align:center;font-weight:500}
-.results{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:12px}
+.results{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}
 .result-card{background:#f7f6f1;border-radius:8px;padding:12px 14px}
+.result-card.ca-card{background:#e6f1fb;border:1px solid #9ec8ef;grid-column:1/-1;display:flex;align-items:baseline;gap:8px 16px;flex-wrap:wrap}
+.ca-card .result-value{font-size:26px;margin:0}
+@media (max-width:700px){.results{grid-template-columns:1fr}}
+.ca-card .result-label{color:#0c447c;font-weight:500}
+.ca-card .result-value{color:#0c447c}
+.ca-card .result-note{color:#2b6096}
 .result-label{font-size:12px;color:#5f5e5a}
 .result-value{font-size:22px;font-weight:500;margin:2px 0}
 .result-note{font-size:11px;color:#5f5e5a}
@@ -111,6 +117,9 @@ button.primary:hover{background:#185fa5}
   /* results */
   .results{grid-template-columns:repeat(3,1fr);gap:5px}
   .result-card{background:#f7f6f1 !important;padding:5px 7px;border-radius:5px}
+  .result-card.ca-card{background:#e6f1fb !important;border:1px solid #9ec8ef !important;padding:4px 8px}
+  .ca-card .result-value{font-size:16px}
+  .ca-card .result-label{font-size:9px}
   .result-label{font-size:8px}
   .result-value{font-size:13px;margin:0}
   .result-note{font-size:7px;line-height:1.3}
@@ -143,7 +152,6 @@ button.primary:hover{background:#185fa5}
     <span><b>Sex:</b> <span id="phSex">—</span></span>
     <span><b>Date of birth:</b> <span id="phDob">—</span></span>
     <span><b>Date of X-ray:</b> <span id="phDox">—</span></span>
-    <span><b>Chronological age:</b> <span id="phCa">—</span></span>
   </div>
   <div class="ph-row" style="margin-top:2px;color:#5f5e5a"><span id="phStages"></span></div>
 </div>
@@ -203,6 +211,7 @@ button.primary:hover{background:#185fa5}
 
 <div class="card">
 <div class="results">
+<div class="result-card ca-card"><div class="result-label">Chronological age</div><div class="result-value" id="caCard">—</div><div class="result-note" id="caCardNote">enter date of birth and date of X-ray</div></div>
 <div class="result-card"><div class="result-label">Maturity score (7 teeth)</div><div class="result-value" id="sum7">—</div><div class="result-note" id="sum7Note">Demirjian 1973</div></div>
 <div class="result-card"><div class="result-label">Demirjian 1973 (7 teeth)</div><div class="result-value" id="r_dem">—</div><div class="result-note" id="r_demDiff">awaiting staging</div></div>
 <div class="result-card"><div class="result-label">Willems 2001 (7 teeth)</div><div class="result-value" id="r_wil">—</div><div class="result-note" id="r_wilDiff">awaiting staging</div></div>
@@ -534,7 +543,19 @@ function updatePrintHead() {
   document.getElementById('phSex').textContent = sex;
   document.getElementById('phDob').textContent = dob === 'DD/MM/YYYY' ? dash : dob;
   document.getElementById('phDox').textContent = dox === 'DD/MM/YYYY' ? dash : dox;
-  document.getElementById('phCa').textContent = caTxt;
+
+  // chronological age shown as a result card, same visual weight as the dental ages
+  const caCard = document.getElementById('caCard');
+  const caCardNote = document.getElementById('caCardNote');
+  const m = caTxt.match(/^(\d+\.\d+) yr \((.+)\)$/);
+  if (m) {
+    caCard.textContent = m[1] + ' yr';
+    caCardNote.textContent = m[2] + ((dob !== 'DD/MM/YYYY' && dox !== 'DD/MM/YYYY')
+      ? ' · ' + dox + ' − ' + dob : '');
+  } else {
+    caCard.textContent = '—';
+    caCardNote.textContent = (caTxt && caTxt !== '—') ? caTxt : 'enter date of birth and date of X-ray';
+  }
   const staged = TEETH.filter(t => state[t]).map(t => t + '=' + state[t]);
   document.getElementById('phStages').textContent =
     staged.length ? 'Stages recorded — ' + staged.join(', ') : '';
